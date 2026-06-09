@@ -5,30 +5,30 @@ import pandas as pd
 from datetime import datetime
 
 # 페이지 기본 설정
-st.set_page_config(page_title="글로벌 Top 10 주식 대시보드", page_icon="📈", layout="wide")
+st.set_page_config(page_title="글로벌 반도체 주식 대시보드", page_icon="💻", layout="wide")
 
-st.title("🌐 글로벌 시가총액 Top 10 주식 대시보드")
-st.markdown("야후 파이낸스(Yahoo Finance) 데이터를 활용하여 글로벌 시가총액 상위 10개 기업의 **최근 1년 주가 변화**를 시각화합니다.")
+st.title("💻 글로벌 반도체 기업 주식 대시보드")
+st.markdown("야후 파이낸스(Yahoo Finance) 데이터를 활용하여 글로벌 시가총액 상위 반도체 기업들의 **최근 1년 주가 변화**를 시각화합니다.")
 
-# 시가총액 Top 10 기업 티커 딕셔너리 (미국 상장 기준)
-top10_tickers = {
-    'Microsoft': 'MSFT',
-    'Apple': 'AAPL',
+# 주요 반도체 기업 티커 딕셔너리
+semi_tickers = {
     'NVIDIA': 'NVDA',
-    'Alphabet (Google)': 'GOOGL',
-    'Amazon': 'AMZN',
-    'Meta': 'META',
-    'Berkshire Hathaway': 'BRK-B',
-    'Eli Lilly': 'LLY',
     'TSMC': 'TSM',
-    'Broadcom': 'AVGO'
+    'Broadcom': 'AVGO',
+    'ASML': 'ASML',
+    'AMD': 'AMD',
+    'Qualcomm': 'QCOM',
+    'Applied Materials': 'AMAT',
+    'Micron': 'MU',
+    'Texas Instruments': 'TXN',
+    'Intel': 'INTC'
 }
 
 # 데이터 로드 함수 (캐싱을 통해 속도 향상)
 @st.cache_data(ttl=86400) # 24시간(86400초)마다 데이터 갱신
 def load_stock_data():
     df_list = []
-    for company_name, ticker in top10_tickers.items():
+    for company_name, ticker in semi_tickers.items():
         try:
             # yfinance로 1년치 데이터 가져오기
             stock = yf.Ticker(ticker)
@@ -51,7 +51,7 @@ def load_stock_data():
     return pd.DataFrame()
 
 # 데이터 로딩 상태 표시
-with st.spinner('야후 파이낸스에서 데이터를 불러오는 중입니다...'):
+with st.spinner('야후 파이낸스에서 반도체 기업 데이터를 불러오는 중입니다...'):
     df = load_stock_data()
 
 if not df.empty:
@@ -61,8 +61,8 @@ if not df.empty:
     st.sidebar.header("설정")
     selected_companies = st.sidebar.multiselect(
         "비교할 기업을 선택하세요",
-        options=list(top10_tickers.keys()),
-        default=list(top10_tickers.keys()) # 기본으로 모두 선택
+        options=list(semi_tickers.keys()),
+        default=['NVIDIA', 'TSMC', 'Broadcom', 'AMD'] # 기본으로 4개 주요 기업만 선택
     )
     
     # 선택된 기업만 필터링
@@ -75,7 +75,7 @@ if not df.empty:
             x='Date', 
             y='Close', 
             color='Company',
-            title='최근 1년 주가 추이 (종가 기준)',
+            title='최근 1년 반도체 기업 주가 추이 (종가 기준)',
             labels={'Close': '주가 (USD)', 'Date': '날짜', 'Company': '기업명'}
         )
         

@@ -1,157 +1,169 @@
 import streamlit as st
-import time
+import random
+import datetime
+import urllib.parse
 
-# 1. 페이지 설정 (앱 이름, 아이콘, 레이아웃)
+# 1. 페이지 설정 (미니멀하고 세련된 느낌)
 st.set_page_config(
-    page_title="나의 미래 직업 찾기!",
-    page_icon="🚀",
+    page_title="오늘의 저녁",
+    page_icon="🍽️",
     layout="centered"
 )
 
-# 2. 학생 친화적인 커스텀 CSS 적용
+# 2. 미니멀리즘 커스텀 CSS
 st.markdown("""
     <style>
+    /* 전체 배경 및 폰트 */
     .main {
-        background-color: #F8F9FA;
+        background-color: #FAFAFA;
+        font-family: 'Pretendard', 'Apple SD Gothic Neo', sans-serif;
     }
-    h1 {
-        color: #4A90E2;
-        text-align: center;
-        font-family: 'Apple SD Gothic Neo', sans-serif;
+    /* 헤더 스타일 */
+    h1, h2, h3 {
+        color: #333333;
+        font-weight: 600;
+        letter-spacing: -0.5px;
     }
-    .job-card {
+    /* 응원 문구 카드 */
+    .quote-box {
+        padding: 30px;
         background-color: #FFFFFF;
-        padding: 20px;
-        border-radius: 15px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        margin-bottom: 20px;
-        border-left: 5px solid #4A90E2;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+        text-align: center;
+        margin-bottom: 30px;
+        border-top: 3px solid #6c757d;
     }
-    .job-title {
-        color: #2C3E50;
-        font-size: 20px;
+    .quote-text {
+        color: #555555;
+        font-size: 18px;
+        font-weight: 500;
+        line-height: 1.6;
+    }
+    /* 메뉴 결과 카드 */
+    .menu-box {
+        padding: 30px;
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        border: 1px solid #EEEEEE;
+        text-align: center;
+        margin-top: 20px;
+        margin-bottom: 20px;
+    }
+    .menu-title {
+        font-size: 28px;
         font-weight: bold;
+        color: #111111;
         margin-bottom: 10px;
     }
-    .job-desc {
-        color: #555555;
-        font-size: 16px;
+    /* 버튼 스타일 조정 */
+    .stButton>button {
+        background-color: #333333;
+        color: white;
+        border-radius: 8px;
+        border: none;
+        padding: 10px 20px;
+        transition: all 0.3s ease;
     }
-    /* Streamlit 기본 메뉴 숨기기 (앱처럼 보이게) */
+    .stButton>button:hover {
+        background-color: #555555;
+        color: white;
+    }
+    /* 불필요한 기본 UI 숨기기 */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     </style>
 """, unsafe_allow_html=True)
 
-# 3. MBTI별 미래 유망 직업 데이터
-mbti_data = {
-    "ENFJ": {"title": "세상을 이끄는 따뜻한 리더 🌟", "jobs": [
-        {"name": "🎓 에듀테크 기획자", "desc": "인공지능과 교육을 결합하여 새로운 학습 플랫폼과 코스를 기획합니다."},
-        {"name": "😊 최고행복책임자 (CHO)", "desc": "기업이나 조직 내에서 구성원들의 웰빙과 멘탈 케어를 전담하는 리더입니다."}
-    ]},
-    "ENFP": {"title": "열정적인 아이디어 뱅크 💡", "jobs": [
-        {"name": "🕶️ 메타버스 크리에이터", "desc": "가상 현실 세계에서 즐길 수 있는 공간, 게임, 아이템을 창작합니다."},
-        {"name": "📈 트렌드 포어캐스터", "desc": "빅데이터와 사회 흐름을 분석하여 미래의 유행과 소비 트렌드를 예측합니다."}
-    ]},
-    "ENTJ": {"title": "비전을 실현하는 전략가 🎯", "jobs": [
-        {"name": "🚀 테크 창업가", "desc": "혁신적인 IT 기술을 바탕으로 사회 문제를 해결하는 스타트업을 이끕니다."},
-        {"name": "⚡ 신재생 에너지 전문가", "desc": "태양광, 풍력 등 친환경 에너지 시스템을 기획하고 관리합니다."}
-    ]},
-    "ENTP": {"title": "상상력이 풍부한 발명가 🛠️", "jobs": [
-        {"name": "🤖 프롬프트 엔지니어", "desc": "AI가 최상의 결과를 낼 수 있도록 질문과 명령어를 정교하게 설계합니다."},
-        {"name": "💡 혁신 전략 컨설턴트", "desc": "기업이 새로운 기술을 도입하고 혁신할 수 있도록 아이디어를 제공합니다."}
-    ]},
-    "ESFJ": {"title": "다정한 커뮤니티 빌더 🤝", "jobs": [
-        {"name": "🌐 온라인 커뮤니티 매니저", "desc": "플랫폼 내의 유저들이 원활하게 소통할 수 있도록 환경을 조성하고 관리합니다."},
-        {"name": "🩺 원격 의료 코디네이터", "desc": "환자가 비대면으로 진료를 받을 수 있도록 의료진과 환자 사이를 연결합니다."}
-    ]},
-    "ESFP": {"title": "에너지 넘치는 분위기 메이커 🎉", "jobs": [
-        {"name": "🎬 실감형 콘텐츠(VR/AR) 디렉터", "desc": "사람들이 직접 체험하고 즐길 수 있는 가상/증강현실 콘텐츠를 연출합니다."},
-        {"name": "📱 1인 미디어 창작자", "desc": "유튜브, 틱톡 등 다양한 플랫폼에서 자신만의 독창적인 콘텐츠를 기획하고 방송합니다."}
-    ]},
-    "ESTJ": {"title": "체계적인 시스템 관리자 📊", "jobs": [
-        {"name": "📦 스마트 물류 관리자", "desc": "로봇과 AI를 활용하여 전 세계의 물류와 택배 시스템을 효율적으로 통제합니다."},
-        {"name": "⚙️ 자동화 시스템 엔지니어", "desc": "공장이나 스마트 시티가 자동으로 돌아갈 수 있도록 시스템을 설계합니다."}
-    ]},
-    "ESTP": {"title": "도전을 즐기는 행동파 🚀", "jobs": [
-        {"name": "🚁 드론 조종 및 관제사", "desc": "배송, 촬영, 인명 구조 등 다양한 목적으로 활용되는 드론을 조종하고 관리합니다."},
-        {"name": "🚨 사이버 위기 대응 전문가", "desc": "해킹이나 시스템 다운 등 갑작스러운 디지털 위기 상황에 빠르게 대처합니다."}
-    ]},
-    "INFJ": {"title": "통찰력 있는 영감의 소유자 🔮", "jobs": [
-        {"name": "⚖️ AI 윤리 전문가", "desc": "인공지능이 인간에게 해를 끼치지 않고 공정하게 판단하도록 규칙을 만듭니다."},
-        {"name": "🧠 디지털 멘탈 헬스케어 기획자", "desc": "우울증, 불안 등을 치료할 수 있는 스마트폰 앱이나 VR 프로그램을 기획합니다."}
-    ]},
-    "INFP": {"title": "이상적인 세상을 꿈꾸는 아티스트 🎨", "jobs": [
-        {"name": "🌍 ESG 컨설턴트", "desc": "환경 보호와 사회적 책임을 다하면서 기업이 성장할 수 있도록 돕습니다."},
-        {"name": "👾 버추얼 캐릭터 디자이너", "desc": "가상 세계나 게임 속에서 살아 숨 쉬는 매력적인 캐릭터의 성격과 외모를 디자인합니다."}
-    ]},
-    "INTJ": {"title": "논리적인 미래 설계자 📐", "jobs": [
-        {"name": "데이터 과학자", "desc": "엄청난 양의 데이터 속에서 숨겨진 패턴을 찾아내어 미래를 예측합니다."},
-        {"name": "⚛️ 양자 컴퓨터 연구원", "desc": "현재의 슈퍼컴퓨터보다 수백만 배 빠른 미래형 양자 컴퓨터를 연구합니다."}
-    ]},
-    "INTP": {"title": "호기심 많은 아이디어 탐구자 🔍", "jobs": [
-        {"name": "🛡️ 정보 보안 전문가", "desc": "해커들의 공격으로부터 소중한 정보와 서버를 지켜내는 사이버 경찰입니다."},
-        {"name": "⛓️ 블록체인 개발자", "desc": "가상화폐, NFT 등 보안이 생명인 탈중앙화 디지털 기술을 개발합니다."}
-    ]},
-    "ISFJ": {"title": "섬세하고 따뜻한 수호자 🛡️", "jobs": [
-        {"name": "🌱 스마트 팜 운영자", "desc": "IT 기술을 농업에 접목하여 날씨에 상관없이 친환경 작물을 기르고 관리합니다."},
-        {"name": "⌚ 웨어러블 헬스케어 기획자", "desc": "스마트워치처럼 몸에 착용하여 건강을 관리해 주는 기기를 기획합니다."}
-    ]},
-    "ISFP": {"title": "따뜻한 감성을 지닌 예술가 🖌️", "jobs": [
-        {"name": "♻️ 지속가능한 패션 디자이너", "desc": "버려지는 자원을 재활용하거나 친환경 소재를 사용하여 아름다운 옷을 만듭니다."},
-        {"name": "📱 UI/UX 디자이너", "desc": "사용자들이 스마트폰 앱이나 웹사이트를 편리하고 예쁘게 사용할 수 있도록 디자인합니다."}
-    ]},
-    "ISTJ": {"title": "책임감 강한 원칙주의자 📋", "jobs": [
-        {"name": "🚗 자율주행 차량 테스트 엔지니어", "desc": "운전자 없이 스스로 달리는 자동차가 안전하게 도로를 주행할 수 있도록 꼼꼼히 테스트합니다."},
-        {"name": "☁️ 클라우드 아키텍트", "desc": "기업의 방대한 자료를 안전하게 보관하고 관리할 수 있는 가상 서버를 설계합니다."}
-    ]},
-    "ISTP": {"title": "논리적이고 뛰어난 손재주 🔧", "jobs": [
-        {"name": "🦾 로봇 공학 기술자", "desc": "인간을 대신하여 위험한 일을 하거나 일상을 돕는 스마트 로봇을 개발하고 수리합니다."},
-        {"name": "🌐 IoT(사물인터넷) 설계자", "desc": "집안의 가전제품이나 도시의 신호등을 인터넷으로 연결하여 똑똑하게 만듭니다."}
-    ]}
+# 3. 데이터: 응원 글귀
+quotes = [
+    "오늘 하루도 정말 고생 많으셨습니다. 맛있는 저녁으로 스스로를 다독여주세요.",
+    "완벽하지 않아도 괜찮아요. 무사히 오늘을 마친 것만으로도 당신은 충분히 멋집니다.",
+    "수많은 별 중 당신이 가장 빛나는 밤입니다. 편안한 저녁 시간 보내세요.",
+    "바쁘게 달려온 오늘, 이제는 당신만의 쉼표를 찍을 시간입니다.",
+    "당신의 땀방울은 절대 배신하지 않습니다. 오늘 저녁은 온전히 당신을 위해 즐기세요."
+]
+
+# 4. 데이터: 기분별 메뉴 및 레시피
+menu_data = {
+    "스트레스 팍! (매운맛)": [
+        {"name": "🔥 매운 쭈꾸미 볶음", "recipe": "1. 쭈꾸미를 밀가루로 문질러 씻습니다.\n2. 고추장, 고춧가루, 간장, 다진마늘, 매실액으로 양념장을 만듭니다.\n3. 파와 양파를 기름에 볶다가 쭈꾸미와 양념장을 넣고 센 불에 빠르게 볶아냅니다.\n4. 콩나물을 곁들이면 더욱 맛있습니다."},
+        {"name": "🔥 국물 닭발", "recipe": "1. 닭발을 끓는 물에 한번 데쳐 잡내를 제거합니다.\n2. 고추장, 고춧가루, 청양고추, 간장, 올리고당을 섞어 매운 양념을 만듭니다.\n3. 냄비에 닭발과 양념, 물을 자작하게 붓고 푹 끓여줍니다.\n4. 주먹밥과 계란찜을 꼭 곁들여 드세요."}
+    ],
+    "너무 피곤해 (든든한 국물)": [
+        {"name": "🍲 차돌박이 된장찌개", "recipe": "1. 뚝배기에 차돌박이를 먼저 볶아 기름을 냅니다.\n2. 쌀뜨물을 붓고 된장과 고추장을 3:1 비율로 풉니다.\n3. 애호박, 양파, 두부, 버섯을 썰어 넣고 끓입니다.\n4. 마지막에 청양고추와 파를 썰어 넣어 칼칼함을 더합니다."},
+        {"name": "🍲 뜨끈한 스지 어묵탕", "recipe": "1. 스지(소 힘줄)를 핏물을 빼고 푹 삶아 부드럽게 만듭니다.\n2. 무와 대파, 다시마로 맑은 육수를 냅니다.\n3. 꼬치 어묵과 삶은 스지를 육수에 넣고 국간장으로 간을 맞춥니다.\n4. 쑥갓을 올려 향긋하게 마무리합니다."}
+    ],
+    "기분 전환이 필요해 (특별한 요리)": [
+        {"name": "🍝 트러플 크림 파스타", "recipe": "1. 파스타 면을 알단테로 삶아 건져냅니다.\n2. 팬에 버터를 두르고 다진 양파와 버섯을 볶습니다.\n3. 생크림과 우유를 붓고 끓이다가 면을 넣고 졸입니다.\n4. 소금, 후추로 간을 하고 마지막에 트러플 오일을 몇 방울 뿌려 풍미를 더합니다."},
+        {"name": "🥩 비프 스테이크", "recipe": "1. 소고기(등심 또는 안심)를 상온에 30분 꺼내두고 소금, 후추, 올리브오일로 마리네이드합니다.\n2. 팬을 아주 뜨겁게 달군 후 고기를 올려 겉면을 튀기듯 굽습니다(시어링).\n3. 버터와 마늘, 타임(허브)을 넣고 고기에 끼얹으며 굽습니다.\n4. 고기를 꺼내 5분간 레스팅(휴지) 한 후 썰어 먹습니다."}
+    ],
+    "가볍고 속 편하게 (건강식)": [
+        {"name": "🥗 연어 아보카도 포케", "recipe": "1. 생연어를 깍둑썰기하여 간장, 참기름, 스리라차 소스에 살짝 버무립니다.\n2. 현미밥을 그릇에 담고 위에 연어, 슬라이스한 아보카도, 오이, 양파를 올립니다.\n3. 김가루와 날치알, 깨를 뿌려줍니다.\n4. 취향에 따라 스리라차 마요 소스를 곁들여 비벼 먹습니다."},
+        {"name": "🥙 닭가슴살 샐러드 랩", "recipe": "1. 통밀 또띠아를 마른 팬에 살짝 굽습니다.\n2. 닭가슴살을 찢어 머스타드나 그릭 요거트에 버무립니다.\n3. 또띠아 위에 로메인(상추), 토마토, 닭가슴살을 올립니다.\n4. 단단하게 말아 반으로 썰어 먹습니다."}
+    ]
 }
 
-# 4. 메인 UI 구성
-st.title("🚀 나의 MBTI, 나의 미래 직업!")
-st.write("안녕! 너의 성격 유형을 선택하면, 미래에 가장 잘 어울리는 멋진 직업을 추천해 줄게. 😎")
-st.divider()
+# 5. UI 구성: 상단 위로의 글귀
+st.markdown(f"""
+    <div class="quote-box">
+        <div class="quote-text">"{random.choice(quotes)}"</div>
+    </div>
+""", unsafe_allow_html=True)
 
-# 5. MBTI 선택 섹션 (4가지 지표를 버튼식으로 선택)
-st.subheader("📌 너의 MBTI는 무엇이니?")
+st.write("---")
 
-col1, col2, col3, col4 = st.columns(4)
+# 6. 사용자 입력 섹션
+col1, col2 = st.columns(2)
 
 with col1:
-    e_i = st.radio("에너지 방향", ["E (외향)", "I (내향)"])
+    st.subheader("📅 날짜 선택")
+    selected_date = st.date_input("언제의 저녁인가요?", datetime.date.today())
+
 with col2:
-    s_n = st.radio("인식 방식", ["S (감각)", "N (직관)"])
-with col3:
-    t_f = st.radio("판단 방식", ["T (사고)", "F (감정)"])
-with col4:
-    j_p = st.radio("생활 양식", ["J (판단)", "P (인식)"])
+    st.subheader("💭 오늘의 기분")
+    selected_mood = st.selectbox(
+        "지금 어떤 기분이신가요?",
+        list(menu_data.keys())
+    )
 
-# 선택된 MBTI 문자열 조합
-user_mbti = e_i[0] + s_n[0] + t_f[0] + j_p[0]
+st.write("")
+st.subheader("📍 나의 위치")
+location = st.text_input("근처 맛집을 찾기 위해 동네 이름을 입력해 주세요. (예: 강남역, 서촌, 제주도 애월)", placeholder="동네 이름을 입력해주세요")
 
-st.divider()
+st.write("")
 
-# 6. 결과 확인 버튼 및 애니메이션
-if st.button("✨ 내 미래 직업 확인하기", use_container_width=True):
-    with st.spinner("미래의 너를 만나러 가는 중... 🚀"):
-        time.sleep(1.5) # 학생들의 기대감을 높이는 짧은 딜레이
-        
-    result = mbti_data[user_mbti]
+# 7. 메뉴 추천 및 결과 출력
+if st.button("✨ 오늘의 저녁 메뉴 추천받기", use_container_width=True):
+    # 선택한 기분에 맞는 메뉴 중 하나를 랜덤으로 선택
+    recommended = random.choice(menu_data[selected_mood])
+    menu_name = recommended["name"]
+    recipe_text = recommended["recipe"]
     
-    st.balloons() # 풍선 애니메이션으로 흥미 유발
-    
-    st.success(f"### 🎉 당신은 **{user_mbti}**! ({result['title']})")
-    st.write("이런 미래 직업들은 어때요?")
-    
-    # 직업 카드 출력
-    for job in result['jobs']:
-        st.markdown(f"""
-        <div class="job-card">
-            <div class="job-title">{job['name']}</div>
-            <div class="job-desc">{job['desc']}</div>
+    # 결과 출력
+    st.markdown(f"""
+        <div class="menu-box">
+            <div style="color: #666; font-size: 16px;">{selected_date.strftime('%Y년 %m월 %d일')}의 추천 메뉴</div>
+            <div class="menu-title">{menu_name}</div>
         </div>
+    """, unsafe_allow_html=True)
+    
+    # 레시피 (접었다 펼칠 수 있게)
+    with st.expander("👨‍🍳 직접 만들어 볼까요? (레시피 보기)"):
+        st.write(recipe_text)
+        
+    # 맛집 찾기 (네이버 지도 링크 생성)
+    if location:
+        search_query = urllib.parse.quote(f"{location} {menu_name.split()[-1]} 맛집")
+        map_url = f"https://map.naver.com/v5/search/{search_query}"
+        
+        st.info("👇 요리하기 지친다면? 근처 맛집을 찾아보세요!")
+        st.markdown(f"""
+            <a href="{map_url}" target="_blank" style="text-decoration: none;">
+                <div style="background-color: #03C75A; color: white; padding: 15px; text-align: center; border-radius: 8px; font-weight: bold; font-size: 16px;">
+                    🗺️ 네이버 지도에서 '{location} {menu_name.split()[-1]}' 맛집 검색하기
+                </div>
+            </a>
         """, unsafe_allow_html=True)
+    else:
+        st.warning("위치를 입력하시면 근처 맛집 검색 링크를 제공해 드립니다.")
